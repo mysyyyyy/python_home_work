@@ -1,10 +1,12 @@
 Question 1:
--2
+1
 Question 2:
--2
+4
 Question 3:
--2
-Question 4:
 -1
+Question 4:
+12
 Question 5:
+-1
+Question 6:
 4

@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 
 
 # 不要修改read_subway_data函数的内容
@@ -55,6 +56,45 @@ def write_data(file_path, result):
             f.write("%s\n" % output)
 
 
+def generate_path(end_station, station_index, station_list, is_visit, paths):
+    path = []
+    cur_station = end_station
+    while is_visit[station_index[cur_station]] != station_index[cur_station]:
+        path.append(cur_station)
+        cur_station = station_list[is_visit[station_index[cur_station]]]
+    path.append(cur_station)
+    path.reverse()
+    # print(path)
+    paths.append(path)
+
+
+def dfs(cur_station, end_station, change_subway_list, station_index, station_map, station_list, is_visit, paths, subway_index):
+    if cur_station == end_station and subway_index == len(change_subway_list) - 1:
+        generate_path(end_station, station_index,
+                      station_list, is_visit, paths)
+        return True
+    arrive = False
+    for i in range(len(station_list)):
+        if is_visit[i] >= 0:
+            continue
+        for j in range(2):
+            temp_subway_index = subway_index + j
+            if temp_subway_index >= len(change_subway_list):
+                break
+            subway = change_subway_list[temp_subway_index]
+            if station_map[station_index[cur_station]][i] != subway:
+                continue
+            is_visit[station_index[station_list[i]]
+                     ] = station_index[cur_station]
+            ret = dfs(station_list[i], end_station, change_subway_list, station_index,
+                      station_map, station_list, is_visit, paths, temp_subway_index)
+            if ret:
+                arrive = arrive
+                arrive = True
+            is_visit[station_index[station_list[i]]] = -1
+    return arrive
+
+
 def search_route(subway_data, start_station, end_station, change_subway_list, show_detail=False):
     """
     根据输入的北京地铁数据subway_data，给定起始站start_station和结束站end_station，严格按照change_subway_list换乘地铁,
@@ -86,14 +126,60 @@ def search_route(subway_data, start_station, end_station, change_subway_list, sh
         start_station="复兴门", end_station="西直门", change_subway_list=["2号线"], answer=4  # 2号线是环线
     """
 
+    # constuct graph
+    station_list = []
+    for value in subway_data.values():
+        station_list += value["station_list"]
+    station_list = list(set(station_list))
+    station_list.sort()
+    # print(station_list)
+    station_list_length = len(station_list)
+    station_index = {}
+    for station in station_list:
+        station_index[station] = station_list.index(station)
+    # print(station_index)
+    station_map = []
+    for i in range(station_list_length):
+        station_map.append(['no' for j in range(station_list_length)])
+    is_visit = [-1 for i in range(station_list_length)]
+    for key, value in subway_data.items():
+        is_circle = value["is_circle"]
+        stations = value["station_list"]
+        for i in range(len(stations)):
+            if i == len(stations) - 1 and not is_circle:
+                break
+            pre_station = stations[i]
+            cur_station = stations[(i + 1) % len(stations)]
+            if pre_station != cur_station:
+                station_map[station_index[pre_station]
+                            ][station_index[cur_station]] = key
+                station_map[station_index[cur_station]
+                            ][station_index[pre_station]] = key
+    # df = pd.DataFrame(station_map, station_list, station_list)
+    # df.to_excel('station_map.xlsx')
+    is_visit[station_index[start_station]
+             ] = station_index[start_station]
+    arrive = False
+    subway_index = 0
+    paths = []
+    arrive = dfs(start_station, end_station, change_subway_list,
+                 station_index, station_map, station_list, is_visit, paths, subway_index)
+    if not arrive:
+        distance = -1
+    else:
+        distance = station_list_length
+        for path in paths:
+            if distance > len(path):
+                distance = len(path)
     if show_detail:
-        print("始发站：%s  到达站：%s  换乘顺序：%s  最短距离为：%d站" % (start_station, end_station, "-".join(change_subway_list), distance))
+        print("始发站：%s  到达站：%s  换乘顺序：%s  最短距离为：%d站" % (start_station,
+              end_station, "-".join(change_subway_list), distance))
 
     return distance
 
 
 # 不需要修改main函数
-if __name__=="__main__":
+if __name__ == "__main__":
 
     subway_data = read_subway_data(file_path="./subway.txt")
     input_list = read_data(file_path="./input.txt")
@@ -103,7 +189,8 @@ if __name__=="__main__":
 
     for start_station, end_station, change_subway_list in input_list:
         try:
-            distance = search_route(subway_data, start_station, end_station, change_subway_list, show_detail=show_detail)
+            distance = search_route(
+                subway_data, start_station, end_station, change_subway_list, show_detail=show_detail)
         except Exception as e:
             print("程序发生错误:", e)
             distance = -2
@@ -111,4 +198,3 @@ if __name__=="__main__":
         ouptut_list.append(distance)
 
     write_data(file_path="./output.txt", result=ouptut_list)
-
